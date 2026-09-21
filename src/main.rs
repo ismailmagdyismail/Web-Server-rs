@@ -1,7 +1,26 @@
 use std::{
     error::Error,
     io::{Read, Write},
+    net::TcpStream,
 };
+
+fn handle_connection(client_stream: &mut TcpStream) -> Result<(), std::io::Error> {
+    let mut buffer = [b'0'; 1024];
+    let read_bytes = client_stream.read(&mut buffer)?;
+    println!(
+        "total read bytes from client {} with content {}",
+        read_bytes,
+        std::str::from_utf8(&buffer).expect("invalid http request, not valid utf8!!!"),
+    );
+
+    let response = create_response();
+    let written_bytes = client_stream.write(response.as_bytes())?;
+    println!("response of size {}, is written back to the client", {
+        written_bytes
+    });
+
+    Ok(())
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
     let address = "0.0.0.0:8080";
@@ -12,21 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     for stream_result in listener.incoming() {
         let mut client_stream = stream_result?;
         println!("connection accepted, new client created !!");
-
-        let mut buffer = [b'0'; 1024];
-        let read_bytes = client_stream.read(&mut buffer)?;
-        println!(
-            "total read bytes from client {} with content {}",
-            read_bytes,
-            std::str::from_utf8(&buffer).expect("invalid http request, not valid utf8!!!"),
-        );
-
-        let response = create_response();
-        let written_bytes = client_stream.write(response.as_bytes())?;
-        println!("response of size {}, is written back to the client", {
-            written_bytes
-        });
-
+        handle_connection(&mut client_stream)?;
         println!("==============================");
     }
     Ok(())
