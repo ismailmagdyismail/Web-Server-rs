@@ -30,10 +30,8 @@ fn handle_connection(mut client_stream: TcpStream) -> Result<(), std::io::Error>
     // read_basic(&mut client_stream)?;
 
     let response = create_response();
-    let written_bytes = client_stream.write(response.as_bytes())?;
-    println!("response of size {}, is written back to the client", {
-        written_bytes
-    });
+    client_stream.write_all(response.as_bytes())?;
+    println!("response of size {}, is written back to the client", response.len());
 
     Ok(())
 }
