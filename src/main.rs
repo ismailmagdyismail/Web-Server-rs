@@ -2,18 +2,13 @@ use std::{error::Error, io::Write};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let address = "0.0.0.0:8080";
-    let stream = std::net::TcpListener::bind(&address)?;
+    let listener = std::net::TcpListener::bind(&address)?;
 
     println!("server is listening on adress {}", address);
 
-    loop {
-        let (mut client_stream, client_adresss) = stream.accept()?;
-
-        println!(
-            "connection accepted with address {} and port {}",
-            client_adresss.ip(),
-            client_adresss.port()
-        );
+    for stream_result in listener.incoming() {
+        let mut client_stream = stream_result?;
+        println!("connection accepted, new client created !!");
 
         let body = "<!DOCTYPE html><html><body>Hello World from RUST!</body></html>";
 
@@ -36,4 +31,5 @@ Connection: keep-alive",
 
         println!("==============================");
     }
+    Ok(())
 }
