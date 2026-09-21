@@ -1,10 +1,20 @@
 use std::{
     error::Error,
-    io::{Read, Write},
+    io::{BufRead, BufReader, Read, Write},
     net::TcpStream,
 };
 
-fn handle_connection(client_stream: &mut TcpStream) -> Result<(), std::io::Error> {
+fn read_buffered(client_stream: &mut TcpStream) {
+    let buffered_reader = BufReader::new(client_stream);
+    let http_request: Vec<_> = buffered_reader
+        .lines()
+        .map(|result| result.unwrap_or_else(|_| String::new()))
+        .take_while(|line| !line.is_empty())
+        .collect();
+    dbg!(http_request);
+}
+
+fn read_basic(client_stream: &mut TcpStream) -> Result<(), std::io::Error> {
     let mut buffer = [b'0'; 1024];
     let read_bytes = client_stream.read(&mut buffer)?;
     println!(
@@ -12,6 +22,12 @@ fn handle_connection(client_stream: &mut TcpStream) -> Result<(), std::io::Error
         read_bytes,
         std::str::from_utf8(&buffer).expect("invalid http request, not valid utf8!!!"),
     );
+    Ok(())
+}
+
+fn handle_connection(mut client_stream: TcpStream) -> Result<(), std::io::Error> {
+    read_buffered(&mut client_stream);
+    // read_basic(&mut client_stream)?;
 
     let response = create_response();
     let written_bytes = client_stream.write(response.as_bytes())?;
@@ -29,9 +45,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("server is listening on adress {}", address);
 
     for stream_result in listener.incoming() {
-        let mut client_stream = stream_result?;
+        let client_stream = stream_result?;
         println!("connection accepted, new client created !!");
-        handle_connection(&mut client_stream)?;
+        handle_connection(client_stream)?;
         println!("==============================");
     }
     Ok(())
