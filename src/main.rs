@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use web_server_rs::http_request_parser::HttpRequest;
+use web_server_rs::{http_request_parser::HttpRequest, thread_pool::ThreadPool};
 
 fn read_buffered(client_stream: &mut TcpStream) -> Vec<String> {
     let buffered_reader = BufReader::new(client_stream);
@@ -57,15 +57,19 @@ fn handle_connection(mut client_stream: TcpStream) -> Result<(), Box<dyn Error>>
 fn main() -> Result<(), Box<dyn Error>> {
     let address = "0.0.0.0:8080";
     let listener = std::net::TcpListener::bind(&address)?;
-
+    let mut pool = ThreadPool::new(10);
+    pool.start();
     println!("server is listening on adress {}", address);
 
     for stream_result in listener.incoming() {
         let client_stream = stream_result?;
         println!("connection accepted, new client created !!");
-        handle_connection(client_stream)?;
+        pool.submit_task(move || {
+            handle_connection(client_stream).unwrap();
+        });
         println!("==============================");
     }
+    pool.stop();
     Ok(())
 }
 
