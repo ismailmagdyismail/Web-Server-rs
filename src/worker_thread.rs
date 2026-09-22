@@ -60,29 +60,26 @@ where
 
 #[cfg(test)]
 mod test {
-    use std::{
-        sync::{Arc, Mutex},
-        thread,
-        time::Duration,
-    };
+    use std::sync::{Arc, Mutex};
 
     use crate::worker_thread::WorkerThread;
 
     #[test]
     fn test_pulling_tasks() {
         let mut worker_thread = WorkerThread::new();
-        let arc = Arc::new(Mutex::new(1));
+        let arc = Arc::new(Mutex::new(0));
         let worker_clone = arc.clone();
         worker_thread.start();
         worker_thread.submit_task(move || {
             println!("incrementing from worker started");
-            *worker_clone.lock().unwrap() += 1;
+            for _ in 0..100 {
+                *worker_clone.lock().unwrap() += 1;
+            }
             println!("incrementing from worker finished");
         });
 
-        thread::sleep(Duration::from_millis(10));
         worker_thread.stop_and_wait();
 
-        assert_eq!(*arc.lock().unwrap(), 2);
+        assert_eq!(*arc.lock().unwrap(), 100);
     }
 }
