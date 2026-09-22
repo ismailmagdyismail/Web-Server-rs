@@ -13,11 +13,10 @@ where
 
 impl<T> WorkerThread<T>
 where
-    T: FnOnce() + Send + Sync + 'static,
+    T: FnOnce() + Send + 'static,
 {
     pub fn new() -> WorkerThread<T> {
         WorkerThread {
-            // is_running: Arc::new(AtomicBool::new(false)),
             tx_channel: None,
             thread: None,
         }
