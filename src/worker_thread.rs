@@ -37,7 +37,9 @@ where
 
     pub fn stop_and_wait(&mut self) {
         self.tx_channel.take();
-        self.thread.take();
+        if let Some(thread) = self.thread.take() {
+            thread.join().unwrap();
+        }
         println!("worker {}, is shutting down", self.id);
     }
 
@@ -76,7 +78,7 @@ mod test {
 
     #[test]
     fn test_pulling_tasks() {
-        let mut worker_thread = WorkerThread::new();
+        let mut worker_thread = WorkerThread::new(10);
         let arc = Arc::new(Mutex::new(0));
         let worker_clone = arc.clone();
         worker_thread.start();
