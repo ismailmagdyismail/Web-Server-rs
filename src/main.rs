@@ -1,17 +1,20 @@
 use std::{
     error::Error,
-    io::{BufRead, BufReader, Read, Write},
+    io::{BufRead, BufReader, ErrorKind, Read, Write},
     net::TcpStream,
 };
 
-fn read_buffered(client_stream: &mut TcpStream) {
+use web_server_rs::http_request_parser::HttpRequest;
+
+fn read_buffered(client_stream: &mut TcpStream) -> Vec<String> {
     let buffered_reader = BufReader::new(client_stream);
     let http_request: Vec<_> = buffered_reader
         .lines()
         .map(|result| result.unwrap_or_else(|_| String::new()))
         .take_while(|line| !line.is_empty())
         .collect();
-    dbg!(http_request);
+    dbg!(&http_request);
+    http_request
 }
 
 fn read_basic(client_stream: &mut TcpStream) -> Result<(), std::io::Error> {
@@ -26,12 +29,19 @@ fn read_basic(client_stream: &mut TcpStream) -> Result<(), std::io::Error> {
 }
 
 fn handle_connection(mut client_stream: TcpStream) -> Result<(), std::io::Error> {
-    read_buffered(&mut client_stream);
     // read_basic(&mut client_stream)?;
+    let request_lines = read_buffered(&mut client_stream);
+    let http_request = HttpRequest::parse(&request_lines)
+        .map_err(|_| std::io::Error::from(ErrorKind::NotFound))?; // TODO: fix this error type
+
+    dbg!("http_request {}", &http_request);
 
     let response = create_response();
     client_stream.write_all(response.as_bytes())?;
-    println!("response of size {}, is written back to the client", response.len());
+    println!(
+        "response of size {}, is written back to the client",
+        response.len()
+    );
 
     Ok(())
 }
