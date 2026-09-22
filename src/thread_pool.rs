@@ -66,4 +66,22 @@ mod test {
         pool.stop();
         assert_eq!(vec.lock().unwrap().len(), 20);
     }
+
+    #[test]
+    fn test_turns() {
+        let size = 10;
+        let mut pool = ThreadPool::new(size);
+        let vec = Arc::new(Mutex::new(Vec::<String>::new()));
+        pool.start();
+        let tasks = 10;
+        for i in 0..tasks {
+            let clone = vec.clone();
+            pool.submit_task(move || {
+                (*clone.lock().unwrap()).push("task completed".to_string());
+            });
+            assert_eq!(pool.turn, (i + 1) % size);
+        }
+        pool.stop();
+        assert_eq!(vec.lock().unwrap().len(), tasks);
+    }
 }

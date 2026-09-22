@@ -1,7 +1,6 @@
 # Design
 
 - thread pool to avoid exhausting resources
-- (naive) Thread per request / connection
 
 # [TODO] Async-Await (stackless coroutines)
 
