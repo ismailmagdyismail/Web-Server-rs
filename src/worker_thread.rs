@@ -5,7 +5,7 @@ use std::{
 
 pub struct WorkerThread<T>
 where
-    T: FnOnce(),
+    T: FnOnce() + Send + 'static,
 {
     tx_channel: Option<mpsc::Sender<T>>,
     thread: Option<JoinHandle<()>>,
