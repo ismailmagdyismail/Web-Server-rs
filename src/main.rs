@@ -1,6 +1,6 @@
 use std::{
     error::Error,
-    io::{BufRead, BufReader, ErrorKind, Read, Write},
+    io::{BufRead, BufReader, Read, Write},
     net::TcpStream,
 };
 
@@ -28,15 +28,19 @@ fn read_basic(client_stream: &mut TcpStream) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn handle_connection(mut client_stream: TcpStream) -> Result<(), std::io::Error> {
+fn handle_connection(mut client_stream: TcpStream) -> Result<(), Box<dyn Error>> {
     // read_basic(&mut client_stream)?;
     let request_lines = read_buffered(&mut client_stream);
-    let http_request = HttpRequest::parse(&request_lines)
-        .map_err(|_| std::io::Error::from(ErrorKind::NotFound))?; // TODO: fix this error type
+    let http_request = HttpRequest::parse(&request_lines)?;
 
     dbg!("http_request {}", &http_request);
 
-    let response = create_response();
+    let response = if http_request.request_line.uri == "/" {
+        create_response()
+    } else {
+        create_not_found_response()
+    };
+
     client_stream.write_all(response.as_bytes())?;
     println!(
         "response of size {}, is written back to the client",
@@ -70,6 +74,19 @@ Server: Apache/2.4.41 (Ubuntu)
 Content-Type: text/html; charset=UTF-8
 Content-Length: {}
 Connection: keep-alive",
+        body.len()
+    );
+
+    let response = (response_header + "\r\n\r\n") + body;
+    response
+}
+
+fn create_not_found_response() -> String {
+    let body = "<!DOCTYPE html><html><body>NOT FOUND 404 from RUST!</body></html>";
+    let response_header = format!(
+        "HTTP/1.1 404 NotFound
+Content-Length: {}
+Connection: close",
         body.len()
     );
 
