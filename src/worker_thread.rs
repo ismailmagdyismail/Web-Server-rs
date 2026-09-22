@@ -7,6 +7,7 @@ pub struct WorkerThread<T>
 where
     T: FnOnce() + Send + 'static,
 {
+    id: usize,
     tx_channel: Option<mpsc::Sender<T>>,
     thread: Option<JoinHandle<()>>,
 }
@@ -15,8 +16,9 @@ impl<T> WorkerThread<T>
 where
     T: FnOnce() + Send + 'static,
 {
-    pub fn new() -> WorkerThread<T> {
+    pub fn new(id: usize) -> WorkerThread<T> {
         WorkerThread {
+            id,
             tx_channel: None,
             thread: None,
         }
@@ -33,11 +35,10 @@ where
         }));
     }
 
-    pub fn stop_and_wait(self) {
-        {
-            drop(self.tx_channel.unwrap());
-        }
-        self.thread.unwrap().join().unwrap();
+    pub fn stop_and_wait(&mut self) {
+        self.tx_channel.take();
+        self.thread.take();
+        println!("worker {}, is shutting down", self.id);
     }
 
     pub fn submit_task(&mut self, task: T) {
@@ -55,6 +56,15 @@ where
         while let Ok(task) = task_queue.recv() {
             task();
         }
+    }
+}
+
+impl<T> Drop for WorkerThread<T>
+where
+    T: FnOnce() + Send + 'static,
+{
+    fn drop(&mut self) {
+        self.stop_and_wait();
     }
 }
 

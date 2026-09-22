@@ -14,8 +14,8 @@ where
 {
     pub fn new(size: usize) -> ThreadPool<T> {
         let mut vec = Vec::<WorkerThread<T>>::new();
-        for _ in 0..size {
-            vec.push(WorkerThread::new());
+        for i in 0..size {
+            vec.push(WorkerThread::new(i + 1));
         }
         ThreadPool {
             worker_threads: vec,
@@ -29,8 +29,8 @@ where
         }
     }
 
-    pub fn stop(self) {
-        for thread in self.worker_threads {
+    pub fn stop(&mut self) {
+        for thread in &mut self.worker_threads {
             thread.stop_and_wait();
         }
     }
@@ -45,6 +45,14 @@ where
     }
 }
 
+impl<T> Drop for ThreadPool<T>
+where
+    T: FnOnce() + Send + 'static,
+{
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
 #[cfg(test)]
 mod test {
 
