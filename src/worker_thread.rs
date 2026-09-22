@@ -1,14 +1,12 @@
 use std::{
-    sync::{Arc, Mutex, mpsc},
+    sync::mpsc,
     thread::{self, JoinHandle},
 };
 
-type ThreadSafeFlag = Arc<Mutex<bool>>;
 pub struct WorkerThread<T>
 where
     T: FnOnce(),
 {
-    is_running: ThreadSafeFlag,
     tx_channel: Option<mpsc::Sender<T>>,
     thread: Option<JoinHandle<()>>,
 }
@@ -19,52 +17,44 @@ where
 {
     pub fn new() -> WorkerThread<T> {
         WorkerThread {
-            is_running: Arc::new(Mutex::new(false)),
+            // is_running: Arc::new(AtomicBool::new(false)),
             tx_channel: None,
             thread: None,
         }
     }
 
     pub fn start(&mut self) {
-        *self.is_running.lock().unwrap() = true;
-        let flag_clone: Arc<Mutex<bool>> = self.is_running.clone();
+        if self.is_started() {
+            return;
+        }
         let (tx, rx) = mpsc::channel::<T>();
         self.tx_channel = Some(tx);
         self.thread = Some(thread::spawn(move || {
-            WorkerThread::worker_thread_loop(flag_clone, rx);
+            WorkerThread::worker_thread_loop(rx);
         }));
     }
 
     pub fn stop_and_wait(self) {
         {
-            *self.is_running.lock().unwrap() = false;
-            let channel_to_close = self.tx_channel.unwrap();
-            drop(channel_to_close);
+            drop(self.tx_channel.unwrap());
         }
         self.thread.unwrap().join().unwrap();
     }
 
     pub fn submit_task(&mut self, task: T) {
-        if *self.is_running.lock().unwrap() {
+        if self.is_started() {
             let tx_channel = self.tx_channel.as_ref().unwrap();
             tx_channel.send(task).unwrap();
         }
     }
 
-    fn worker_thread_loop(running_flag: ThreadSafeFlag, task_queue: mpsc::Receiver<T>) {
-        loop {
-            {
-                let is_running = *running_flag.lock().unwrap();
-                if !is_running {
-                    println!("stooped ");
-                    break;
-                }
-            }
-            if let Ok(task) = task_queue.recv() {
-                task();
-            } else {
-                return;
-            }
+    fn is_started(&self) -> bool {
+        self.thread.is_some()
+    }
+
+    fn worker_thread_loop(task_queue: mpsc::Receiver<T>) {
+        while let Ok(task) = task_queue.recv() {
+            task();
         }
     }
 }
