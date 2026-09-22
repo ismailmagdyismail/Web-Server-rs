@@ -2,6 +2,8 @@ use std::{
     error::Error,
     io::{BufRead, BufReader, Read, Write},
     net::TcpStream,
+    thread,
+    time::Duration,
 };
 
 use web_server_rs::http_request_parser::HttpRequest;
@@ -37,6 +39,8 @@ fn handle_connection(mut client_stream: TcpStream) -> Result<(), Box<dyn Error>>
 
     let response = if http_request.request_line.uri == "/" {
         create_response()
+    } else if http_request.request_line.uri == "/sleep" {
+        create_slow_request_response()
     } else {
         create_not_found_response()
     };
@@ -92,4 +96,9 @@ Connection: close",
 
     let response = (response_header + "\r\n\r\n") + body;
     response
+}
+
+fn create_slow_request_response() -> String {
+    thread::sleep(Duration::from_secs(2));
+    create_response()
 }
